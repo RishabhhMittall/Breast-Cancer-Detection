@@ -10,27 +10,34 @@ with open("breast_cancer_model.pkl", "rb") as f:
 app = Flask(__name__)
 CORS(app)
 
+# Define expected feature names
+FEATURE_NAMES = [
+    "radius_mean", "texture_mean", "perimeter_mean", "area_mean", "smoothness_mean",
+    "compactness_mean", "concavity_mean", "concave points_mean", "symmetry_mean", "fractal_dimension_mean",
+    "radius_se", "texture_se", "perimeter_se", "area_se", "smoothness_se",
+    "compactness_se", "concavity_se", "concave points_se", "symmetry_se", "fractal_dimension_se",
+    "radius_worst", "texture_worst", "perimeter_worst", "area_worst", "smoothness_worst",
+    "compactness_worst", "concavity_worst", "concave points_worst", "symmetry_worst", "fractal_dimension_worst"
+]
+
 @app.route("/")
 def home():
-    return "🏥 Breast Cancer Prediction API is live!"
+    return "🏥 Breast Cancer Prediction API is live with named features!"
 
 @app.route("/predict", methods=["POST"])
 def predict():
     try:
         input_data = request.get_json()
 
-        # Expecting 30 features as a list
-        if "features" not in input_data:
-            return jsonify({"error": "Missing 'features' key in JSON"}), 400
+        if not all(feature in input_data for feature in FEATURE_NAMES):
+            missing = [f for f in FEATURE_NAMES if f not in input_data]
+            return jsonify({"error": f"Missing input features: {missing}"}), 400
 
-        features = input_data["features"]
+        # Create input array using the correct order
+        input_values = [float(input_data[feature]) for feature in FEATURE_NAMES]
+        input_array = np.array(input_values).reshape(1, -1)
 
-        if not isinstance(features, list) or len(features) != 30:
-            return jsonify({"error": "Input must be a list of 30 numerical values."}), 400
-
-        input_array = np.asarray(features).reshape(1, -1)
         prediction = model.predict(input_array)
-
         result = "Malignant" if prediction[0] == 0 else "Benign"
 
         return jsonify({
